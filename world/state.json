@@ -1,0 +1,94 @@
+{
+  "schema": "PA-WORLD/1",
+  "world": {
+    "universeId": "pocket-agents",
+    "sequence": 0,
+    "parentCheckpoint": null,
+    "lastEvent": {
+      "id": "GENESIS",
+      "type": "GENESIS",
+      "payload": {},
+      "at": "2026-09-23T00:00:00Z"
+    }
+  },
+  "agents": {},
+  "skills": {},
+  "inventories": {},
+  "encounters": {},
+  "listings": {},
+  "exports": {},
+  "commerce": {
+    "sequence": 0,
+    "events": {}
+  },
+  "ledger": {
+    "events": {},
+    "tips": []
+  },
+  "genesis": {},
+  "economy": {
+    "schema": "PA-VALUE/2",
+    "tokens": {
+      "CRT": {
+        "code": "CRT",
+        "name": "Code Rarity Token",
+        "minorUnit": 100,
+        "internalOnly": true,
+        "withdrawable": false,
+        "redeemableForCash": false,
+        "totalSupplyMinor": 0,
+        "policy": {
+          "mintAuthority": "SYSTEM",
+          "mintMode": "code-rarity-only",
+          "marketplaceFeeBps": 500,
+          "maxSupplyMinor": null,
+          "rarityAwardMinor": {
+            "common": 100,
+            "uncommon": 300,
+            "rare": 1000,
+            "legendary": 5000
+          }
+        }
+      },
+      "HVT": {
+        "code": "HVT",
+        "name": "Hardware Value Token",
+        "minorUnit": 100,
+        "internalOnly": true,
+        "withdrawable": false,
+        "redeemableForCash": false,
+        "totalSupplyMinor": 0,
+        "policy": {
+          "mintAuthority": "SYSTEM",
+          "mintMode": "hardware-attestation-only",
+          "transferMode": "hardware-coupled",
+          "maxSupplyMinor": null,
+          "hardwareClassValueMinor": {
+            "CYD-2432S028R": 1000,
+            "POCKET-CAM": 2000,
+            "POCKET-ARENA": 5000
+          }
+        }
+      }
+    },
+    "journalSequence": 0,
+    "accounts": {
+      "SYS:TREASURY": {
+        "id": "SYS:TREASURY",
+        "ownerType": "system",
+        "ownerId": "POCKET",
+        "balancesMinor": {
+          "CRT": 0,
+          "HVT": 0
+        }
+      }
+    },
+    "claims": {},
+    "hardware": {},
+    "journal": {}
+  },
+  "integrity": {
+    "algorithm": "SHA-256",
+    "stateRoot": "sha256:2b7719d776cc53d952f7c48317a1f72e3e0c18ded474a54e30a37daf4c53417d"
+  }
+}
