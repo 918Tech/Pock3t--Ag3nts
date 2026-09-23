@@ -2,18 +2,153 @@
   "schema": "PA-WORLD/1",
   "world": {
     "universeId": "pocket-agents",
-    "sequence": 0,
-    "parentCheckpoint": null,
+    "sequence": 1,
+    "parentCheckpoint": "8ca130723a6568406cd62f1155ba5cbb1c369791",
     "lastEvent": {
-      "id": "GENESIS",
-      "type": "GENESIS",
-      "payload": {},
-      "at": "2026-09-23T00:00:00Z"
+      "id": "EVT-WORLD-0000000001",
+      "type": "PLAYABLE_GENESIS",
+      "payload": {
+        "agents": [
+          "GHOST-918",
+          "VOID-221"
+        ],
+        "skills": 5,
+        "hardware": 2,
+        "crtSupplyMinor": 6000,
+        "hvtSupplyMinor": 2000
+      },
+      "at": "2026-09-23T12:23:34Z"
     }
   },
-  "agents": {},
-  "skills": {},
-  "inventories": {},
+  "agents": {
+    "GHOST-918": {
+      "id": "GHOST-918",
+      "name": "Ghost",
+      "archetype": "Stealth",
+      "role": "player",
+      "status": "active",
+      "revision": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "hardwareIds": [
+        "CYD-GHOST-918-0001"
+      ],
+      "stats": {
+        "stealth": 8,
+        "signal": 6,
+        "defense": 3,
+        "social": 2,
+        "mobility": 7
+      }
+    },
+    "VOID-221": {
+      "id": "VOID-221",
+      "name": "Void 221",
+      "archetype": "Hunter",
+      "role": "wild",
+      "status": "active",
+      "revision": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "hardwareIds": [
+        "CYD-VOID-221-0001"
+      ],
+      "stats": {
+        "stealth": 6,
+        "signal": 7,
+        "defense": 6,
+        "social": 2,
+        "mobility": 5
+      }
+    }
+  },
+  "skills": {
+    "GLASS-EAR-000001": {
+      "uid": "GLASS-EAR-000001",
+      "defId": "glass-ear",
+      "rarity": "common",
+      "tag": "SIG",
+      "ownerId": "GHOST-918",
+      "state": "active",
+      "genesisId": "GEN-GLASS-EAR-0001",
+      "genesisIndex": 1,
+      "revision": 1,
+      "transfers": 0,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "acquiredAt": "2026-09-23T12:23:34Z"
+    },
+    "CIRCUIT-VEIL-000001": {
+      "uid": "CIRCUIT-VEIL-000001",
+      "defId": "circuit-veil",
+      "rarity": "uncommon",
+      "tag": "STL",
+      "ownerId": "GHOST-918",
+      "state": "active",
+      "genesisId": "GEN-CIRCUIT-VEIL-0001",
+      "genesisIndex": 1,
+      "revision": 1,
+      "transfers": 0,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "acquiredAt": "2026-09-23T12:23:34Z"
+    },
+    "LATTICE-STEP-000001": {
+      "uid": "LATTICE-STEP-000001",
+      "defId": "lattice-step",
+      "rarity": "common",
+      "tag": "NAV",
+      "ownerId": "GHOST-918",
+      "state": "active",
+      "genesisId": "GEN-LATTICE-STEP-0001",
+      "genesisIndex": 1,
+      "revision": 1,
+      "transfers": 0,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "acquiredAt": "2026-09-23T12:23:34Z"
+    },
+    "RF-GHOST-000001": {
+      "uid": "RF-GHOST-000001",
+      "defId": "rf-ghost",
+      "rarity": "uncommon",
+      "tag": "STL",
+      "ownerId": "VOID-221",
+      "state": "active",
+      "genesisId": "GEN-RF-GHOST-0001",
+      "genesisIndex": 1,
+      "revision": 1,
+      "transfers": 0,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "acquiredAt": "2026-09-23T12:23:34Z"
+    },
+    "CRYPTO-CORE-000001": {
+      "uid": "CRYPTO-CORE-000001",
+      "defId": "crypto-core",
+      "rarity": "rare",
+      "tag": "KEY",
+      "ownerId": "VOID-221",
+      "state": "active",
+      "genesisId": "GEN-CRYPTO-CORE-0001",
+      "genesisIndex": 1,
+      "revision": 1,
+      "transfers": 0,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "acquiredAt": "2026-09-23T12:23:34Z"
+    }
+  },
+  "inventories": {
+    "GHOST-918": {
+      "skills": [
+        "GLASS-EAR-000001",
+        "CIRCUIT-VEIL-000001",
+        "LATTICE-STEP-000001"
+      ],
+      "revision": 1
+    },
+    "VOID-221": {
+      "skills": [
+        "RF-GHOST-000001",
+        "CRYPTO-CORE-000001"
+      ],
+      "revision": 1
+    }
+  },
   "encounters": {},
   "listings": {},
   "exports": {},
@@ -22,10 +157,78 @@
     "events": {}
   },
   "ledger": {
-    "events": {},
-    "tips": []
+    "events": {
+      "EVT-WORLD-0000000001": {
+        "id": "EVT-WORLD-0000000001",
+        "seq": 1,
+        "type": "PLAYABLE_GENESIS",
+        "parents": [],
+        "payload": {
+          "agents": [
+            "GHOST-918",
+            "VOID-221"
+          ],
+          "skillInstances": [
+            "GLASS-EAR-000001",
+            "CIRCUIT-VEIL-000001",
+            "LATTICE-STEP-000001",
+            "RF-GHOST-000001",
+            "CRYPTO-CORE-000001"
+          ],
+          "hardwareIds": [
+            "CYD-GHOST-918-0001",
+            "CYD-VOID-221-0001"
+          ]
+        },
+        "at": "2026-09-23T12:23:34Z"
+      }
+    },
+    "tips": [
+      "EVT-WORLD-0000000001"
+    ]
   },
-  "genesis": {},
+  "genesis": {
+    "GEN-GLASS-EAR-0001": {
+      "genesisId": "GEN-GLASS-EAR-0001",
+      "definitionId": "glass-ear",
+      "supply": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "authorityId": "918-ROOT",
+      "status": "issued"
+    },
+    "GEN-CIRCUIT-VEIL-0001": {
+      "genesisId": "GEN-CIRCUIT-VEIL-0001",
+      "definitionId": "circuit-veil",
+      "supply": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "authorityId": "918-ROOT",
+      "status": "issued"
+    },
+    "GEN-LATTICE-STEP-0001": {
+      "genesisId": "GEN-LATTICE-STEP-0001",
+      "definitionId": "lattice-step",
+      "supply": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "authorityId": "918-ROOT",
+      "status": "issued"
+    },
+    "GEN-RF-GHOST-0001": {
+      "genesisId": "GEN-RF-GHOST-0001",
+      "definitionId": "rf-ghost",
+      "supply": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "authorityId": "918-ROOT",
+      "status": "issued"
+    },
+    "GEN-CRYPTO-CORE-0001": {
+      "genesisId": "GEN-CRYPTO-CORE-0001",
+      "definitionId": "crypto-core",
+      "supply": 1,
+      "createdAt": "2026-09-23T12:23:34Z",
+      "authorityId": "918-ROOT",
+      "status": "issued"
+    }
+  },
   "economy": {
     "schema": "PA-VALUE/2",
     "tokens": {
@@ -36,7 +239,7 @@
         "internalOnly": true,
         "withdrawable": false,
         "redeemableForCash": false,
-        "totalSupplyMinor": 0,
+        "totalSupplyMinor": 6000,
         "policy": {
           "mintAuthority": "SYSTEM",
           "mintMode": "code-rarity-only",
@@ -56,8 +259,9 @@
         "minorUnit": 100,
         "internalOnly": true,
         "withdrawable": false,
+        "redeemForCash": false,
         "redeemableForCash": false,
-        "totalSupplyMinor": 0,
+        "totalSupplyMinor": 2000,
         "policy": {
           "mintAuthority": "SYSTEM",
           "mintMode": "hardware-attestation-only",
@@ -71,7 +275,7 @@
         }
       }
     },
-    "journalSequence": 0,
+    "journalSequence": 4,
     "accounts": {
       "SYS:TREASURY": {
         "id": "SYS:TREASURY",
@@ -81,14 +285,181 @@
           "CRT": 0,
           "HVT": 0
         }
+      },
+      "AGENT:GHOST-918": {
+        "id": "AGENT:GHOST-918",
+        "ownerType": "agent",
+        "ownerId": "GHOST-918",
+        "balancesMinor": {
+          "CRT": 5000,
+          "HVT": 1000
+        }
+      },
+      "AGENT:VOID-221": {
+        "id": "AGENT:VOID-221",
+        "ownerType": "agent",
+        "ownerId": "VOID-221",
+        "balancesMinor": {
+          "CRT": 1000,
+          "HVT": 1000
+        }
       }
     },
-    "claims": {},
-    "hardware": {},
-    "journal": {}
+    "claims": {
+      "CRT-GEN-GHOST-918": {
+        "kind": "MINT",
+        "code": "CRT",
+        "agentId": "GHOST-918",
+        "amountMinor": 5000,
+        "evidence": {
+          "artifactId": "GENESIS-CODE-GHOST-918",
+          "rarityClass": "legendary",
+          "rarityBasisHash": "sha256:40a5794e945ce3bf9ac9e1004ebfd3dc6a1c929291b91305c6a2bfb61f5776f8"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "CRT-GEN-VOID-221": {
+        "kind": "MINT",
+        "code": "CRT",
+        "agentId": "VOID-221",
+        "amountMinor": 1000,
+        "evidence": {
+          "artifactId": "GENESIS-CODE-VOID-221",
+          "rarityClass": "rare",
+          "rarityBasisHash": "sha256:73778f79112d746ae1b8c594035a4b3c6b496ffbd22a0a2341be15de4dd0df6a"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "HVT-GEN-GHOST-918": {
+        "kind": "MINT",
+        "code": "HVT",
+        "agentId": "GHOST-918",
+        "amountMinor": 1000,
+        "evidence": {
+          "hardwareId": "CYD-GHOST-918-0001",
+          "hardwareClass": "CYD-2432S028R",
+          "attestationHash": "sha256:5b90a82bbf0f7a425fb306ec449265a1d96c7e28a574685b152c952275952ace",
+          "attestationStatus": "genesis-seed-unverified"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "HVT-GEN-VOID-221": {
+        "kind": "MINT",
+        "code": "HVT",
+        "agentId": "VOID-221",
+        "amountMinor": 1000,
+        "evidence": {
+          "hardwareId": "CYD-VOID-221-0001",
+          "hardwareClass": "CYD-2432S028R",
+          "attestationHash": "sha256:b630ae035826850c7d7ef67fb993db20abac5557a29eec102e2a7d71cd0c11b4",
+          "attestationStatus": "genesis-seed-unverified"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      }
+    },
+    "hardware": {
+      "CYD-GHOST-918-0001": {
+        "hardwareId": "CYD-GHOST-918-0001",
+        "hardwareClass": "CYD-2432S028R",
+        "ownerAgentId": "GHOST-918",
+        "attestationHash": "sha256:5b90a82bbf0f7a425fb306ec449265a1d96c7e28a574685b152c952275952ace",
+        "attestationStatus": "genesis-seed-unverified",
+        "valueMinor": 1000,
+        "status": "active",
+        "revision": 1,
+        "registeredAt": "2026-09-23T12:23:34Z"
+      },
+      "CYD-VOID-221-0001": {
+        "hardwareId": "CYD-VOID-221-0001",
+        "hardwareClass": "CYD-2432S028R",
+        "ownerAgentId": "VOID-221",
+        "attestationHash": "sha256:b630ae035826850c7d7ef67fb993db20abac5557a29eec102e2a7d71cd0c11b4",
+        "attestationStatus": "genesis-seed-unverified",
+        "valueMinor": 1000,
+        "status": "active",
+        "revision": 1,
+        "registeredAt": "2026-09-23T12:23:34Z"
+      }
+    },
+    "journal": {
+      "VAL-0000000001": {
+        "id": "VAL-0000000001",
+        "seq": 1,
+        "kind": "MINT",
+        "code": "CRT",
+        "amountMinor": 5000,
+        "fromAccountId": null,
+        "toAccountId": "AGENT:GHOST-918",
+        "authorityId": "SYSTEM",
+        "claimId": "CRT-GEN-GHOST-918",
+        "reason": "genesis-code-rarity",
+        "evidence": {
+          "artifactId": "GENESIS-CODE-GHOST-918",
+          "rarityClass": "legendary",
+          "rarityBasisHash": "sha256:40a5794e945ce3bf9ac9e1004ebfd3dc6a1c929291b91305c6a2bfb61f5776f8"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "VAL-0000000002": {
+        "id": "VAL-0000000002",
+        "seq": 2,
+        "kind": "MINT",
+        "code": "CRT",
+        "amountMinor": 1000,
+        "fromAccountId": null,
+        "toAccountId": "AGENT:VOID-221",
+        "authorityId": "SYSTEM",
+        "claimId": "CRT-GEN-VOID-221",
+        "reason": "genesis-code-rarity",
+        "evidence": {
+          "artifactId": "GENESIS-CODE-VOID-221",
+          "rarityClass": "rare",
+          "rarityBasisHash": "sha256:73778f79112d746ae1b8c594035a4b3c6b496ffbd22a0a2341be15de4dd0df6a"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "VAL-0000000003": {
+        "id": "VAL-0000000003",
+        "seq": 3,
+        "kind": "MINT",
+        "code": "HVT",
+        "amountMinor": 1000,
+        "fromAccountId": null,
+        "toAccountId": "AGENT:GHOST-918",
+        "authorityId": "SYSTEM",
+        "claimId": "HVT-GEN-GHOST-918",
+        "reason": "genesis-hardware-registration",
+        "evidence": {
+          "hardwareId": "CYD-GHOST-918-0001",
+          "hardwareClass": "CYD-2432S028R",
+          "attestationHash": "sha256:5b90a82bbf0f7a425fb306ec449265a1d96c7e28a574685b152c952275952ace",
+          "attestationStatus": "genesis-seed-unverified"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      },
+      "VAL-0000000004": {
+        "id": "VAL-0000000004",
+        "seq": 4,
+        "kind": "MINT",
+        "code": "HVT",
+        "amountMinor": 1000,
+        "fromAccountId": null,
+        "toAccountId": "AGENT:VOID-221",
+        "authorityId": "SYSTEM",
+        "claimId": "HVT-GEN-VOID-221",
+        "reason": "genesis-hardware-registration",
+        "evidence": {
+          "hardwareId": "CYD-VOID-221-0001",
+          "hardwareClass": "CYD-2432S028R",
+          "attestationHash": "sha256:b630ae035826850c7d7ef67fb993db20abac5557a29eec102e2a7d71cd0c11b4",
+          "attestationStatus": "genesis-seed-unverified"
+        },
+        "at": "2026-09-23T12:23:34Z"
+      }
+    }
   },
   "integrity": {
     "algorithm": "SHA-256",
-    "stateRoot": "sha256:2b7719d776cc53d952f7c48317a1f72e3e0c18ded474a54e30a37daf4c53417d"
+    "stateRoot": "sha256:8a647acd94360fd3b4d3ce855ded1f7474c201cfe5dd5fb0d6c1c38acb98ea49"
   }
 }
