@@ -2,109 +2,115 @@
 import assert from "node:assert/strict";
 import "../web/js/value-tokens.js";
 
-function genesisEconomy() {
-  return {
-    schema: "PA-VALUE/1",
-    currency: {
-      code: "PAV",
-      name: "Pocket Agent Value",
-      minorUnit: 100,
-      internalOnly: true,
-      withdrawable: false,
-      redeemableForCash: false,
+const engine = globalThis.PocketValueTokens.createEngine();
+
+const state = {
+  agents: {
+    "A-1": { id: "A-1" },
+    "B-1": { id: "B-1" }
+  },
+  economy: {
+    schema: "PA-VALUE/2",
+    tokens: {
+      CRT: {
+        code: "CRT",
+        totalSupplyMinor: 0,
+        policy: {
+          mintAuthority: "SYSTEM",
+          marketplaceFeeBps: 500,
+          rarityAwardMinor: {
+            common: 100,
+            uncommon: 300,
+            rare: 1000,
+            legendary: 5000
+          }
+        }
+      },
+      HVT: {
+        code: "HVT",
+        totalSupplyMinor: 0,
+        policy: {
+          mintAuthority: "SYSTEM",
+          transferMode: "hardware-coupled",
+          hardwareClassValueMinor: {
+            "CYD-2432S028R": 1000
+          }
+        }
+      }
     },
-    policy: {
-      issuerAccountId: "SYS:TREASURY",
-      mintAuthority: "SYSTEM",
-      marketplaceFeeBps: 500,
-      maxSupplyMinor: null,
-    },
-    totalSupplyMinor: 0,
     journalSequence: 0,
     accounts: {
       "SYS:TREASURY": {
         id: "SYS:TREASURY",
         ownerType: "system",
         ownerId: "POCKET",
-        balanceMinor: 0,
-      },
+        balancesMinor: { CRT: 0, HVT: 0 }
+      }
     },
-    journal: {},
-  };
-}
-
-const state = {
-  agents: {
-    "GHOST-918": { id: "GHOST-918" },
-    "VOID-221": { id: "VOID-221" },
-  },
-  economy: genesisEconomy(),
+    claims: {},
+    hardware: {},
+    journal: {}
+  }
 };
 
-const engine = globalThis.PocketValueTokens.createEngine();
-
-engine.applyMint(state, {
-  agentId: "GHOST-918",
-  amountMinor: 2500,
-  reason: "selftest-reward",
-  at: "2026-09-23T00:00:01Z",
+engine.applyCodeRarityAward(state, {
+  agentId: "A-1",
+  artifactId: "CODE-1",
+  rarityClass: "rare",
+  rarityBasisHash: "sha256:code",
+  claimId: "CRT-CLAIM-1",
+  at: "2026-09-23T00:00:00Z"
 });
+assert.equal(engine.balanceMinor(state, "A-1", "CRT"), 1000);
 
-assert.equal(engine.balanceMinor(state, "GHOST-918"), 2500);
-assert.equal(state.economy.totalSupplyMinor, 2500);
-
-engine.applyTransfer(state, {
-  fromAgentId: "GHOST-918",
-  toAgentId: "VOID-221",
-  amountMinor: 500,
-  at: "2026-09-23T00:00:02Z",
+engine.applyHardwareRegistration(state, {
+  agentId: "A-1",
+  hardwareId: "CYD-1",
+  hardwareClass: "CYD-2432S028R",
+  attestationHash: "sha256:attest-a",
+  claimId: "HVT-CLAIM-1",
+  at: "2026-09-23T00:01:00Z"
 });
-
-assert.equal(engine.balanceMinor(state, "GHOST-918"), 2000);
-assert.equal(engine.balanceMinor(state, "VOID-221"), 500);
-assert.equal(state.economy.totalSupplyMinor, 2500);
-
-engine.applyMarketplaceSettlement(state, {
-  buyerAgentId: "GHOST-918",
-  sellerAgentId: "VOID-221",
-  priceMinor: 1000,
-  listingId: "LIST-1",
-  at: "2026-09-23T00:00:03Z",
-});
-
-assert.equal(engine.balanceMinor(state, "GHOST-918"), 1000);
-assert.equal(engine.balanceMinor(state, "VOID-221"), 1450);
-assert.equal(state.economy.accounts["SYS:TREASURY"].balanceMinor, 50);
-assert.equal(state.economy.totalSupplyMinor, 2500);
-
-engine.applyBurn(state, {
-  agentId: "VOID-221",
-  amountMinor: 450,
-  at: "2026-09-23T00:00:04Z",
-});
-
-assert.equal(engine.balanceMinor(state, "VOID-221"), 1000);
-assert.equal(state.economy.totalSupplyMinor, 2050);
-assert.equal(state.economy.journalSequence, 4);
+assert.equal(engine.balanceMinor(state, "A-1", "HVT"), 1000);
 
 assert.throws(
-  () =>
-    engine.applyTransfer(state, {
-      fromAgentId: "GHOST-918",
-      toAgentId: "VOID-221",
-      amountMinor: 999999,
-    }),
-  /Insufficient PAV balance/
+  () => engine.applyTransfer(state, {
+    code: "HVT",
+    fromAgentId: "A-1",
+    toAgentId: "B-1",
+    amountMinor: 1000,
+    claimId: "BAD-HVT"
+  }),
+  /hardware-coupled/
 );
 
-console.log(
-  JSON.stringify({
-    ok: true,
-    schema: state.economy.schema,
-    totalSupplyMinor: state.economy.totalSupplyMinor,
-    journalSequence: state.economy.journalSequence,
-    ghost: engine.balanceMinor(state, "GHOST-918"),
-    void: engine.balanceMinor(state, "VOID-221"),
-    treasury: state.economy.accounts["SYS:TREASURY"].balanceMinor,
-  })
-);
+engine.applyHardwareOwnershipTransfer(state, {
+  hardwareId: "CYD-1",
+  fromAgentId: "A-1",
+  toAgentId: "B-1",
+  attestationHash: "sha256:attest-b",
+  claimId: "HVT-XFER-1",
+  at: "2026-09-23T00:02:00Z"
+});
+
+assert.equal(engine.balanceMinor(state, "A-1", "HVT"), 0);
+assert.equal(engine.balanceMinor(state, "B-1", "HVT"), 1000);
+assert.equal(state.economy.hardware["CYD-1"].ownerAgentId, "B-1");
+
+engine.applyHardwareRetirement(state, {
+  hardwareId: "CYD-1",
+  agentId: "B-1",
+  evidenceHash: "sha256:retire",
+  claimId: "HVT-RETIRE-1",
+  at: "2026-09-23T00:03:00Z"
+});
+
+assert.equal(engine.balanceMinor(state, "B-1", "HVT"), 0);
+assert.equal(state.economy.tokens.HVT.totalSupplyMinor, 0);
+
+console.log(JSON.stringify({
+  ok: true,
+  crtSupplyMinor: state.economy.tokens.CRT.totalSupplyMinor,
+  hvtSupplyMinor: state.economy.tokens.HVT.totalSupplyMinor,
+  journalSequence: state.economy.journalSequence
+}));
