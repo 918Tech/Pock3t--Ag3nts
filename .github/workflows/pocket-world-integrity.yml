@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - "world/**"
+      - "world-template/**"
       - "scripts/validate-world.mjs"
       - ".github/workflows/pocket-world-integrity.yml"
 
@@ -27,6 +28,19 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Select canonical or template world
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f world/state.json ]; then
+            echo "POCKET_WORLD_FILE=world/state.json" >> "$GITHUB_ENV"
+          elif [ -f world-template/state.json ]; then
+            echo "POCKET_WORLD_FILE=world-template/state.json" >> "$GITHUB_ENV"
+          else
+            echo "No Pocket Agents world state or template found."
+            exit 1
+          fi
+
       - name: World branches may mutate only canonical state
         if: startsWith(github.ref, 'refs/heads/world/')
         shell: bash
@@ -42,11 +56,11 @@ jobs:
             fi
           fi
 
-      - name: Validate canonical world
-        run: node scripts/validate-world.mjs world/state.json
+      - name: Validate Pocket world
+        run: node scripts/validate-world.mjs "$POCKET_WORLD_FILE"
 
       - name: Verify checkpoint parent linkage
-        if: startsWith(github.ref, 'refs/heads/world/')
+        if: startsWith(github.ref, 'refs/heads/world/') && hashFiles('world/state.json') != ''
         shell: bash
         run: |
           set -euo pipefail
