@@ -4,11 +4,16 @@ on:
   push:
     branches:
       - "world/**"
+      - "feature/internal-value-tokens"
   pull_request:
     paths:
       - "world/**"
       - "world-template/**"
+      - "web/js/value-tokens.js"
+      - "web/js/skill-commerce.js"
       - "scripts/validate-world.mjs"
+      - "scripts/test-value-tokens.mjs"
+      - "scripts/test-skill-commerce.mjs"
       - ".github/workflows/pocket-world-integrity.yml"
 
 permissions:
@@ -58,6 +63,12 @@ jobs:
 
       - name: Validate Pocket world
         run: node scripts/validate-world.mjs "$POCKET_WORLD_FILE"
+
+      - name: Test internal CRT and HVT tokens
+        run: node scripts/test-value-tokens.mjs
+
+      - name: Test skill buy, export, and import
+        run: node scripts/test-skill-commerce.mjs
 
       - name: Verify checkpoint parent linkage
         if: startsWith(github.ref, 'refs/heads/world/') && hashFiles('world/state.json') != ''
