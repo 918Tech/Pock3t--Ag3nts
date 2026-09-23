@@ -1,0 +1,28 @@
+{
+  "schema": "PA-WORLD/1",
+  "world": {
+    "universeId": "pocket-agents",
+    "sequence": 0,
+    "parentCheckpoint": null,
+    "lastEvent": {
+      "id": "GENESIS",
+      "type": "GENESIS",
+      "payload": {},
+      "at": "2026-09-23T00:00:00Z"
+    }
+  },
+  "agents": {},
+  "skills": {},
+  "inventories": {},
+  "encounters": {},
+  "listings": {},
+  "ledger": {
+    "events": {},
+    "tips": []
+  },
+  "genesis": {},
+  "integrity": {
+    "algorithm": "SHA-256",
+    "stateRoot": "sha256:519d615b977fa062d727382eec85398614cf3dbbb273e0653d0a00115b13b000"
+  }
+}
