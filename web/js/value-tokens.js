@@ -1,32 +1,28 @@
 /*
- * Pocket Agents Internal Value Tokens
- * PA-VALUE/1
+ * Pocket Agents Internal Token Engine
+ * PA-VALUE/2
  *
- * PAV is a closed-loop game accounting unit. It is not a blockchain asset,
- * is not cash-redeemable, and has no withdrawal path. Durable mutations are
- * committed through PA-GITWORLD/1 checkpoints.
+ * CRT = Code Rarity Token
+ * HVT = Hardware Value Token
+ *
+ * Both are closed-loop game accounting units. They are not blockchain assets,
+ * are not withdrawable, and are not cash-redeemable.
  */
 (function (global) {
   "use strict";
 
-  const SCHEMA = "PA-VALUE/1";
-  const CODE = "PAV";
+  const SCHEMA = "PA-VALUE/2";
+  const TOKENS = Object.freeze({
+    CRT: Object.freeze({ code: "CRT", name: "Code Rarity Token", minorUnit: 100 }),
+    HVT: Object.freeze({ code: "HVT", name: "Hardware Value Token", minorUnit: 100 }),
+  });
   const TREASURY = "SYS:TREASURY";
-  const DEFAULT_FEE_BPS = 500;
 
-  class ValueTokenError extends Error {
+  class InternalTokenError extends Error {
     constructor(message, details = {}) {
       super(message);
-      this.name = "ValueTokenError";
+      this.name = "InternalTokenError";
       this.details = details;
-    }
-  }
-
-  function assertInt(value, name, { min = 0 } = {}) {
-    if (!Number.isSafeInteger(value) || value < min) {
-      throw new ValueTokenError(`${name} must be a safe integer >= ${min}`, {
-        [name]: value,
-      });
     }
   }
 
@@ -34,212 +30,532 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function assertInt(value, name, min = 0) {
+    if (!Number.isSafeInteger(value) || value < min) {
+      throw new InternalTokenError(`${name} must be a safe integer >= ${min}`, {
+        [name]: value,
+      });
+    }
+  }
+
+  function requireCode(code) {
+    if (!TOKENS[code]) {
+      throw new InternalTokenError("Unknown internal token.", { code });
+    }
+    return code;
+  }
+
+  function requireEconomy(state) {
+    if (!state?.economy || state.economy.schema !== SCHEMA) {
+      throw new InternalTokenError("PA-VALUE/2 economy is not initialized.");
+    }
+    return state.economy;
+  }
+
   function agentAccountId(agentId) {
     if (!agentId || typeof agentId !== "string") {
-      throw new ValueTokenError("agentId is required.");
+      throw new InternalTokenError("agentId is required.");
     }
     return `AGENT:${agentId}`;
   }
 
-  function requireEconomy(state) {
-    const economy = state?.economy;
-    if (!economy || economy.schema !== SCHEMA) {
-      throw new ValueTokenError("PA-VALUE/1 economy is not initialized.");
-    }
-    if (economy.currency?.code !== CODE) {
-      throw new ValueTokenError("Unexpected internal currency code.", {
-        code: economy.currency?.code,
-      });
-    }
-    return economy;
-  }
-
-  function ensureSystemTreasury(economy) {
+  function ensureTreasury(economy) {
     economy.accounts ||= {};
-    if (!economy.accounts[TREASURY]) {
-      economy.accounts[TREASURY] = {
-        id: TREASURY,
-        ownerType: "system",
-        ownerId: "POCKET",
-        balanceMinor: 0,
-      };
-    }
+    economy.accounts[TREASURY] ||= {
+      id: TREASURY,
+      ownerType: "system",
+      ownerId: "POCKET",
+      balancesMinor: { CRT: 0, HVT: 0 },
+    };
+    economy.accounts[TREASURY].balancesMinor ||= { CRT: 0, HVT: 0 };
     return economy.accounts[TREASURY];
   }
 
   function ensureAgentAccount(state, agentId) {
     const economy = requireEconomy(state);
     if (!state.agents?.[agentId]) {
-      throw new ValueTokenError("Cannot create value account for missing agent.", {
+      throw new InternalTokenError("Token account owner agent does not exist.", {
         agentId,
       });
     }
+
     const id = agentAccountId(agentId);
     economy.accounts ||= {};
-    if (!economy.accounts[id]) {
-      economy.accounts[id] = {
-        id,
-        ownerType: "agent",
-        ownerId: agentId,
-        balanceMinor: 0,
-      };
+    economy.accounts[id] ||= {
+      id,
+      ownerType: "agent",
+      ownerId: agentId,
+      balancesMinor: { CRT: 0, HVT: 0 },
+    };
+    economy.accounts[id].balancesMinor ||= { CRT: 0, HVT: 0 };
+
+    for (const code of Object.keys(TOKENS)) {
+      const value = economy.accounts[id].balancesMinor[code] ?? 0;
+      assertInt(value, `${id}.${code}`);
+      economy.accounts[id].balancesMinor[code] = value;
     }
     return economy.accounts[id];
   }
 
-  function getAccount(economy, accountId) {
-    const account = economy.accounts?.[accountId];
-    if (!account) {
-      throw new ValueTokenError("Value account does not exist.", { accountId });
-    }
-    return account;
-  }
-
   function nextJournalId(economy) {
-    const next = Number(economy.journalSequence || 0) + 1;
-    assertInt(next, "journalSequence", { min: 1 });
-    economy.journalSequence = next;
-    return {
-      seq: next,
-      id: `VAL-${String(next).padStart(10, "0")}`,
-    };
+    const seq = Number(economy.journalSequence || 0) + 1;
+    assertInt(seq, "journalSequence", 1);
+    economy.journalSequence = seq;
+    return { seq, id: `VAL-${String(seq).padStart(10, "0")}` };
   }
 
   function appendJournal(economy, entry) {
     economy.journal ||= {};
     const { seq, id } = nextJournalId(economy);
     if (economy.journal[id]) {
-      throw new ValueTokenError("Duplicate value journal id.", { id });
+      throw new InternalTokenError("Duplicate value journal id.", { id });
     }
-    economy.journal[id] = {
-      id,
-      seq,
-      ...entry,
-    };
+    economy.journal[id] = { id, seq, ...entry };
     return economy.journal[id];
   }
 
-  function enforceMaxSupply(economy, candidateSupply) {
-    assertInt(candidateSupply, "candidateSupply");
-    const cap = economy.policy?.maxSupplyMinor;
+  function consumeClaim(economy, claimId, record) {
+    if (!claimId || typeof claimId !== "string") {
+      throw new InternalTokenError("claimId is required for token mutation.");
+    }
+    economy.claims ||= {};
+    if (economy.claims[claimId]) {
+      throw new InternalTokenError("Internal token claim already consumed.", {
+        claimId,
+      });
+    }
+    economy.claims[claimId] = clone(record);
+  }
+
+  function enforceSupply(economy, code, candidate) {
+    assertInt(candidate, "candidateSupplyMinor");
+    const token = economy.tokens?.[code];
+    if (!token) throw new InternalTokenError("Token state missing.", { code });
+    const cap = token.policy?.maxSupplyMinor;
     if (cap !== null && cap !== undefined) {
       assertInt(cap, "maxSupplyMinor");
-      if (candidateSupply > cap) {
-        throw new ValueTokenError("Internal value token max supply exceeded.", {
-          candidateSupply,
-          maxSupplyMinor: cap,
+      if (candidate > cap) {
+        throw new InternalTokenError("Token supply cap exceeded.", {
+          code,
+          candidate,
+          cap,
         });
       }
     }
   }
 
-  function applyMint(state, {
+  function mint(state, {
+    code,
     agentId,
     amountMinor,
-    reason,
     authorityId = "SYSTEM",
-    related = {},
-    at = new Date().toISOString(),
+    claimId,
+    reason,
+    evidence,
+    at,
   }) {
-    assertInt(amountMinor, "amountMinor", { min: 1 });
+    requireCode(code);
+    assertInt(amountMinor, "amountMinor", 1);
     const economy = requireEconomy(state);
-    const expectedAuthority = economy.policy?.mintAuthority || "SYSTEM";
+    const token = economy.tokens[code];
+    const expectedAuthority = token.policy?.mintAuthority || "SYSTEM";
     if (authorityId !== expectedAuthority) {
-      throw new ValueTokenError("Unauthorized PAV mint authority.", {
+      throw new InternalTokenError("Unauthorized mint authority.", {
+        code,
         authorityId,
         expectedAuthority,
       });
     }
 
-    const account = ensureAgentAccount(state, agentId);
-    const candidateSupply = Number(economy.totalSupplyMinor || 0) + amountMinor;
-    enforceMaxSupply(economy, candidateSupply);
+    if (code === "CRT") {
+      if (
+        !evidence?.artifactId ||
+        !evidence?.rarityClass ||
+        !evidence?.rarityBasisHash
+      ) {
+        throw new InternalTokenError(
+          "CRT mint requires code-rarity evidence."
+        );
+      }
+    }
 
-    account.balanceMinor += amountMinor;
-    economy.totalSupplyMinor = candidateSupply;
+    if (code === "HVT") {
+      if (
+        !evidence?.hardwareId ||
+        !evidence?.hardwareClass ||
+        !evidence?.attestationHash
+      ) {
+        throw new InternalTokenError(
+          "HVT mint requires hardware attestation evidence."
+        );
+      }
+    }
+
+    const account = ensureAgentAccount(state, agentId);
+    const candidate = Number(token.totalSupplyMinor || 0) + amountMinor;
+    enforceSupply(economy, code, candidate);
+
+    consumeClaim(economy, claimId, {
+      kind: "MINT",
+      code,
+      agentId,
+      amountMinor,
+      evidence: clone(evidence || {}),
+      at,
+    });
+
+    account.balancesMinor[code] += amountMinor;
+    token.totalSupplyMinor = candidate;
 
     return appendJournal(economy, {
       kind: "MINT",
+      code,
       amountMinor,
       fromAccountId: null,
       toAccountId: account.id,
       authorityId,
-      reason: reason || "reward",
-      related: clone(related),
+      claimId,
+      reason: reason || "authorized-mint",
+      evidence: clone(evidence || {}),
       at,
     });
   }
 
-  function applyBurn(state, {
+  function applyCodeRarityAward(state, {
     agentId,
-    amountMinor,
-    reason,
-    related = {},
+    artifactId,
+    rarityClass,
+    rarityBasisHash,
+    claimId,
+    authorityId = "SYSTEM",
     at = new Date().toISOString(),
   }) {
-    assertInt(amountMinor, "amountMinor", { min: 1 });
     const economy = requireEconomy(state);
-    const account = ensureAgentAccount(state, agentId);
+    const amountMinor = Number(
+      economy.tokens.CRT.policy?.rarityAwardMinor?.[rarityClass]
+    );
+    assertInt(amountMinor, "rarityAwardMinor", 1);
 
-    if (account.balanceMinor < amountMinor) {
-      throw new ValueTokenError("Insufficient PAV balance to burn.", {
-        agentId,
-        balanceMinor: account.balanceMinor,
-        amountMinor,
-      });
-    }
-
-    account.balanceMinor -= amountMinor;
-    economy.totalSupplyMinor -= amountMinor;
-
-    return appendJournal(economy, {
-      kind: "BURN",
+    return mint(state, {
+      code: "CRT",
+      agentId,
       amountMinor,
-      fromAccountId: account.id,
-      toAccountId: null,
-      reason: reason || "sink",
-      related: clone(related),
+      authorityId,
+      claimId,
+      reason: `code-rarity:${rarityClass}`,
+      evidence: { artifactId, rarityClass, rarityBasisHash },
       at,
     });
   }
 
   function applyTransfer(state, {
+    code,
     fromAgentId,
     toAgentId,
     amountMinor,
-    reason,
-    related = {},
+    claimId,
+    reason = "peer-transfer",
+    evidence = {},
     at = new Date().toISOString(),
   }) {
-    assertInt(amountMinor, "amountMinor", { min: 1 });
+    requireCode(code);
+    assertInt(amountMinor, "amountMinor", 1);
+    const economy = requireEconomy(state);
+
+    if (code === "HVT") {
+      throw new InternalTokenError(
+        "HVT is hardware-coupled and cannot transfer independently."
+      );
+    }
     if (fromAgentId === toAgentId) {
-      throw new ValueTokenError("PAV transfer requires distinct agents.");
+      throw new InternalTokenError("Transfer requires distinct agents.");
     }
 
-    const economy = requireEconomy(state);
     const from = ensureAgentAccount(state, fromAgentId);
     const to = ensureAgentAccount(state, toAgentId);
-
-    if (from.balanceMinor < amountMinor) {
-      throw new ValueTokenError("Insufficient PAV balance.", {
+    if (from.balancesMinor[code] < amountMinor) {
+      throw new InternalTokenError("Insufficient token balance.", {
+        code,
         fromAgentId,
-        balanceMinor: from.balanceMinor,
         amountMinor,
+        balanceMinor: from.balancesMinor[code],
       });
     }
 
-    from.balanceMinor -= amountMinor;
-    to.balanceMinor += amountMinor;
+    consumeClaim(economy, claimId, {
+      kind: "TRANSFER",
+      code,
+      fromAgentId,
+      toAgentId,
+      amountMinor,
+      evidence: clone(evidence),
+      at,
+    });
+
+    from.balancesMinor[code] -= amountMinor;
+    to.balancesMinor[code] += amountMinor;
 
     return appendJournal(economy, {
       kind: "TRANSFER",
+      code,
       amountMinor,
       fromAccountId: from.id,
       toAccountId: to.id,
-      reason: reason || "peer-transfer",
-      related: clone(related),
+      claimId,
+      reason,
+      evidence: clone(evidence),
       at,
     });
+  }
+
+  function applyBurn(state, {
+    code,
+    agentId,
+    amountMinor,
+    claimId,
+    reason = "sink",
+    evidence = {},
+    at = new Date().toISOString(),
+  }) {
+    requireCode(code);
+    assertInt(amountMinor, "amountMinor", 1);
+    const economy = requireEconomy(state);
+    const account = ensureAgentAccount(state, agentId);
+    const token = economy.tokens[code];
+
+    if (account.balancesMinor[code] < amountMinor) {
+      throw new InternalTokenError("Insufficient balance to burn.", {
+        code,
+        agentId,
+        amountMinor,
+        balanceMinor: account.balancesMinor[code],
+      });
+    }
+
+    consumeClaim(economy, claimId, {
+      kind: "BURN",
+      code,
+      agentId,
+      amountMinor,
+      evidence: clone(evidence),
+      at,
+    });
+
+    account.balancesMinor[code] -= amountMinor;
+    token.totalSupplyMinor -= amountMinor;
+
+    return appendJournal(economy, {
+      kind: "BURN",
+      code,
+      amountMinor,
+      fromAccountId: account.id,
+      toAccountId: null,
+      claimId,
+      reason,
+      evidence: clone(evidence),
+      at,
+    });
+  }
+
+  function hardwareValueMinor(economy, hardwareClass, requestedValueMinor) {
+    const scheduled =
+      economy.tokens.HVT.policy?.hardwareClassValueMinor?.[hardwareClass];
+    if (scheduled !== undefined) {
+      assertInt(Number(scheduled), "hardwareClassValueMinor", 1);
+      if (
+        requestedValueMinor !== undefined &&
+        requestedValueMinor !== null &&
+        Number(requestedValueMinor) !== Number(scheduled)
+      ) {
+        throw new InternalTokenError(
+          "Hardware value does not match canonical class value.",
+          { hardwareClass, requestedValueMinor, scheduled }
+        );
+      }
+      return Number(scheduled);
+    }
+
+    assertInt(Number(requestedValueMinor), "valueMinor", 1);
+    return Number(requestedValueMinor);
+  }
+
+  function applyHardwareRegistration(state, {
+    agentId,
+    hardwareId,
+    hardwareClass,
+    attestationHash,
+    valueMinor,
+    claimId,
+    authorityId = "SYSTEM",
+    at = new Date().toISOString(),
+  }) {
+    const economy = requireEconomy(state);
+    if (!hardwareId || !hardwareClass || !attestationHash) {
+      throw new InternalTokenError(
+        "Hardware registration requires id, class, and attestation."
+      );
+    }
+
+    economy.hardware ||= {};
+    if (economy.hardware[hardwareId]) {
+      throw new InternalTokenError("Hardware already registered.", { hardwareId });
+    }
+
+    const canonicalValueMinor = hardwareValueMinor(
+      economy,
+      hardwareClass,
+      valueMinor
+    );
+
+    economy.hardware[hardwareId] = {
+      hardwareId,
+      hardwareClass,
+      ownerAgentId: agentId,
+      attestationHash,
+      valueMinor: canonicalValueMinor,
+      status: "active",
+      revision: 1,
+      registeredAt: at,
+    };
+
+    mint(state, {
+      code: "HVT",
+      agentId,
+      amountMinor: canonicalValueMinor,
+      authorityId,
+      claimId,
+      reason: "hardware-registration",
+      evidence: {
+        hardwareId,
+        hardwareClass,
+        attestationHash,
+        hardwareRevision: 1,
+      },
+      at,
+    });
+
+    return economy.hardware[hardwareId];
+  }
+
+  function applyHardwareOwnershipTransfer(state, {
+    hardwareId,
+    fromAgentId,
+    toAgentId,
+    attestationHash,
+    claimId,
+    at = new Date().toISOString(),
+  }) {
+    const economy = requireEconomy(state);
+    const hardware = economy.hardware?.[hardwareId];
+    if (!hardware || hardware.status !== "active") {
+      throw new InternalTokenError("Active hardware record not found.", {
+        hardwareId,
+      });
+    }
+    if (hardware.ownerAgentId !== fromAgentId) {
+      throw new InternalTokenError("Hardware owner mismatch.", {
+        hardwareId,
+        ownerAgentId: hardware.ownerAgentId,
+        fromAgentId,
+      });
+    }
+    if (!state.agents?.[toAgentId] || fromAgentId === toAgentId) {
+      throw new InternalTokenError("Invalid hardware destination agent.");
+    }
+    if (!attestationHash) {
+      throw new InternalTokenError("Hardware transfer needs attestationHash.");
+    }
+
+    const from = ensureAgentAccount(state, fromAgentId);
+    const to = ensureAgentAccount(state, toAgentId);
+    const amountMinor = hardware.valueMinor;
+
+    if (from.balancesMinor.HVT < amountMinor) {
+      throw new InternalTokenError("Coupled HVT balance is inconsistent.", {
+        hardwareId,
+        fromAgentId,
+        amountMinor,
+        balanceMinor: from.balancesMinor.HVT,
+      });
+    }
+
+    consumeClaim(economy, claimId, {
+      kind: "HARDWARE_TRANSFER",
+      code: "HVT",
+      hardwareId,
+      fromAgentId,
+      toAgentId,
+      amountMinor,
+      attestationHash,
+      at,
+    });
+
+    from.balancesMinor.HVT -= amountMinor;
+    to.balancesMinor.HVT += amountMinor;
+
+    hardware.ownerAgentId = toAgentId;
+    hardware.attestationHash = attestationHash;
+    hardware.revision = Number(hardware.revision || 0) + 1;
+    hardware.lastTransferredAt = at;
+
+    return appendJournal(economy, {
+      kind: "HARDWARE_TRANSFER",
+      code: "HVT",
+      amountMinor,
+      fromAccountId: from.id,
+      toAccountId: to.id,
+      claimId,
+      reason: "hardware-ownership-transfer",
+      evidence: {
+        hardwareId,
+        hardwareClass: hardware.hardwareClass,
+        attestationHash,
+        hardwareRevision: hardware.revision,
+      },
+      at,
+    });
+  }
+
+  function applyHardwareRetirement(state, {
+    hardwareId,
+    agentId,
+    evidenceHash,
+    claimId,
+    at = new Date().toISOString(),
+  }) {
+    const economy = requireEconomy(state);
+    const hardware = economy.hardware?.[hardwareId];
+    if (!hardware || hardware.status !== "active") {
+      throw new InternalTokenError("Active hardware record not found.", {
+        hardwareId,
+      });
+    }
+    if (hardware.ownerAgentId !== agentId) {
+      throw new InternalTokenError("Hardware owner mismatch.", {
+        hardwareId,
+        ownerAgentId: hardware.ownerAgentId,
+        agentId,
+      });
+    }
+
+    applyBurn(state, {
+      code: "HVT",
+      agentId,
+      amountMinor: hardware.valueMinor,
+      claimId,
+      reason: "hardware-retirement",
+      evidence: {
+        hardwareId,
+        hardwareRevision: hardware.revision,
+        evidenceHash: evidenceHash || null,
+      },
+      at,
+    });
+
+    hardware.status = "retired";
+    hardware.revision = Number(hardware.revision || 0) + 1;
+    hardware.retiredAt = at;
+    return hardware;
   }
 
   function applyMarketplaceSettlement(state, {
@@ -247,85 +563,86 @@
     sellerAgentId,
     priceMinor,
     listingId,
+    claimId,
     feeBps,
-    related = {},
     at = new Date().toISOString(),
   }) {
-    assertInt(priceMinor, "priceMinor", { min: 1 });
+    assertInt(priceMinor, "priceMinor", 1);
     if (buyerAgentId === sellerAgentId) {
-      throw new ValueTokenError("Buyer and seller must be distinct agents.");
+      throw new InternalTokenError("Buyer and seller must be distinct agents.");
     }
 
     const economy = requireEconomy(state);
-    ensureSystemTreasury(economy);
-
     const buyer = ensureAgentAccount(state, buyerAgentId);
     const seller = ensureAgentAccount(state, sellerAgentId);
-    const treasury = getAccount(economy, economy.policy?.issuerAccountId || TREASURY);
+    const treasury = ensureTreasury(economy);
+    const fee = Number(
+      feeBps ?? economy.tokens.CRT.policy?.marketplaceFeeBps ?? 500
+    );
+    assertInt(fee, "feeBps");
+    if (fee > 10000) throw new InternalTokenError("feeBps cannot exceed 10000.");
 
-    const appliedFeeBps =
-      feeBps === undefined || feeBps === null
-        ? Number(economy.policy?.marketplaceFeeBps ?? DEFAULT_FEE_BPS)
-        : Number(feeBps);
-
-    assertInt(appliedFeeBps, "feeBps");
-    if (appliedFeeBps > 10000) {
-      throw new ValueTokenError("feeBps cannot exceed 10000.", {
-        feeBps: appliedFeeBps,
-      });
-    }
-
-    if (buyer.balanceMinor < priceMinor) {
-      throw new ValueTokenError("Buyer has insufficient PAV.", {
+    if (buyer.balancesMinor.CRT < priceMinor) {
+      throw new InternalTokenError("Buyer has insufficient CRT.", {
         buyerAgentId,
-        balanceMinor: buyer.balanceMinor,
         priceMinor,
+        balanceMinor: buyer.balancesMinor.CRT,
       });
     }
 
-    const feeMinor = Math.floor((priceMinor * appliedFeeBps) / 10000);
+    consumeClaim(economy, claimId, {
+      kind: "MARKETPLACE",
+      code: "CRT",
+      buyerAgentId,
+      sellerAgentId,
+      priceMinor,
+      listingId,
+      at,
+    });
+
+    const feeMinor = Math.floor((priceMinor * fee) / 10000);
     const sellerAmountMinor = priceMinor - feeMinor;
 
-    buyer.balanceMinor -= priceMinor;
-    seller.balanceMinor += sellerAmountMinor;
-    treasury.balanceMinor += feeMinor;
+    buyer.balancesMinor.CRT -= priceMinor;
+    seller.balancesMinor.CRT += sellerAmountMinor;
+    treasury.balancesMinor.CRT += feeMinor;
 
     return appendJournal(economy, {
       kind: "MARKETPLACE",
+      code: "CRT",
       amountMinor: priceMinor,
       sellerAmountMinor,
       feeMinor,
-      feeBps: appliedFeeBps,
+      feeBps: fee,
       fromAccountId: buyer.id,
       toAccountId: seller.id,
       feeAccountId: treasury.id,
+      claimId,
       reason: "marketplace-settlement",
-      related: {
-        listingId: listingId || null,
-        ...clone(related),
-      },
+      evidence: { listingId },
       at,
     });
   }
 
-  function balanceMinor(state, agentId) {
+  function balanceMinor(state, agentId, code) {
+    requireCode(code);
     const economy = requireEconomy(state);
-    return economy.accounts?.[agentAccountId(agentId)]?.balanceMinor || 0;
+    return (
+      economy.accounts?.[agentAccountId(agentId)]?.balancesMinor?.[code] || 0
+    );
   }
 
-  function formatMinor(amountMinor, stateOrEconomy) {
+  function formatMinor(amountMinor, code) {
+    requireCode(code);
     assertInt(amountMinor, "amountMinor");
-    const economy = stateOrEconomy?.economy || stateOrEconomy;
-    const minorUnit = Number(economy?.currency?.minorUnit || 100);
-    const digits = Math.max(0, Math.round(Math.log10(minorUnit)));
-    return `${(amountMinor / minorUnit).toFixed(digits)} ${CODE}`;
+    return `${(amountMinor / 100).toFixed(2)} ${code}`;
   }
 
   function requireGitWorld() {
     const gitWorld = global.POCKET?.gitWorld;
     if (!gitWorld?.checkpoint) {
-      throw new ValueTokenError(
-        "PA-GITWORLD/1 is required for durable PAV mutations."
+      throw new InternalTokenError(
+        "PA-GITWORLD/1 is required for durable token mutations."
       );
     }
     return gitWorld;
@@ -334,106 +651,59 @@
   function createEngine() {
     return {
       schema: SCHEMA,
-      code: CODE,
-      accountIdForAgent: agentAccountId,
+      tokens: TOKENS,
       balanceMinor,
       formatMinor,
-
-      // Domain mutators for composing larger atomic checkpoints.
-      applyMint,
-      applyBurn,
+      applyCodeRarityAward,
       applyTransfer,
+      applyBurn,
+      applyHardwareRegistration,
+      applyHardwareOwnershipTransfer,
+      applyHardwareRetirement,
       applyMarketplaceSettlement,
 
-      async reward({ agentId, amountMinor, reason = "reward", related = {} }) {
-        const gitWorld = requireGitWorld();
-        const at = new Date().toISOString();
-        return gitWorld.checkpoint({
-          type: "VALUE_MINT",
-          summary: `${amountMinor} PAV-minor rewarded to ${agentId}`,
-          payload: { agentId, amountMinor, reason, related },
-          mutate(next) {
-            applyMint(next, {
-              agentId,
-              amountMinor,
-              reason,
-              related,
-              authorityId: "SYSTEM",
-              at,
-            });
-          },
-        });
+      checkpoint(type, summary, payload, mutate) {
+        return requireGitWorld().checkpoint({ type, summary, payload, mutate });
       },
 
-      async burn({ agentId, amountMinor, reason = "sink", related = {} }) {
-        const gitWorld = requireGitWorld();
+      awardCodeRarity(args) {
         const at = new Date().toISOString();
-        return gitWorld.checkpoint({
-          type: "VALUE_BURN",
-          summary: `${amountMinor} PAV-minor burned from ${agentId}`,
-          payload: { agentId, amountMinor, reason, related },
-          mutate(next) {
-            applyBurn(next, { agentId, amountMinor, reason, related, at });
-          },
-        });
+        return this.checkpoint(
+          "CRT_AWARD",
+          `CRT award for ${args.artifactId}`,
+          clone(args),
+          (next) => applyCodeRarityAward(next, { ...args, at })
+        );
       },
 
-      async transfer({
-        fromAgentId,
-        toAgentId,
-        amountMinor,
-        reason = "peer-transfer",
-        related = {},
-      }) {
-        const gitWorld = requireGitWorld();
+      registerHardware(args) {
         const at = new Date().toISOString();
-        return gitWorld.checkpoint({
-          type: "VALUE_TRANSFER",
-          summary: `${amountMinor} PAV-minor ${fromAgentId} -> ${toAgentId}`,
-          payload: { fromAgentId, toAgentId, amountMinor, reason, related },
-          mutate(next) {
-            applyTransfer(next, {
-              fromAgentId,
-              toAgentId,
-              amountMinor,
-              reason,
-              related,
-              at,
-            });
-          },
-        });
+        return this.checkpoint(
+          "HVT_REGISTER",
+          `HVT registration for ${args.hardwareId}`,
+          clone(args),
+          (next) => applyHardwareRegistration(next, { ...args, at })
+        );
       },
 
-      async settleMarketplace({
-        buyerAgentId,
-        sellerAgentId,
-        priceMinor,
-        listingId,
-        related = {},
-      }) {
-        const gitWorld = requireGitWorld();
+      transferHardware(args) {
         const at = new Date().toISOString();
-        return gitWorld.checkpoint({
-          type: "VALUE_MARKETPLACE",
-          summary: `${buyerAgentId} settled ${priceMinor} PAV-minor with ${sellerAgentId}`,
-          payload: {
-            buyerAgentId,
-            sellerAgentId,
-            priceMinor,
-            listingId,
-            related,
-          },
-          mutate(next) {
-            applyMarketplaceSettlement(next, {
-              buyerAgentId,
-              sellerAgentId,
-              priceMinor,
-              listingId,
-              related,
-              at,
-            });
-          },
-        });
+        return this.checkpoint(
+          "HVT_TRANSFER",
+          `HVT transfer for ${args.hardwareId}`,
+          clone(args),
+          (next) => applyHardwareOwnershipTransfer(next, { ...args, at })
+        );
+      },
+
+      retireHardware(args) {
+        const at = new Date().toISOString();
+        return this.checkpoint(
+          "HVT_RETIRE",
+          `HVT retirement for ${args.hardwareId}`,
+          clone(args),
+          (next) => applyHardwareRetirement(next, { ...args, at })
+        );
       },
     };
   }
@@ -447,9 +717,9 @@
 
   global.PocketValueTokens = Object.freeze({
     SCHEMA,
-    CODE,
+    TOKENS,
     TREASURY,
-    ValueTokenError,
+    InternalTokenError,
     createEngine,
     install,
   });
