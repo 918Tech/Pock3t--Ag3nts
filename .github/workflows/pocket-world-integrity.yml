@@ -1,0 +1,76 @@
+name: Pocket World Integrity
+
+on:
+  push:
+    branches:
+      - "world/**"
+  pull_request:
+    paths:
+      - "world/**"
+      - "scripts/validate-world.mjs"
+      - ".github/workflows/pocket-world-integrity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-world:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout complete checkpoint history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: World branches may mutate only canonical state
+        if: startsWith(github.ref, 'refs/heads/world/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            changed="$(git diff --name-only HEAD^ HEAD)"
+            bad="$(printf '%s\n' "$changed" | grep -v '^world/state.json$' || true)"
+            if [ -n "$bad" ]; then
+              echo "World checkpoint commits may change only world/state.json:"
+              printf '%s\n' "$bad"
+              exit 1
+            fi
+          fi
+
+      - name: Validate canonical world
+        run: node scripts/validate-world.mjs world/state.json
+
+      - name: Verify checkpoint parent linkage
+        if: startsWith(github.ref, 'refs/heads/world/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { execFileSync } from "node:child_process";
+
+          const state = JSON.parse(fs.readFileSync("world/state.json", "utf8"));
+          const sequence = Number(state.world?.sequence || 0);
+
+          if (sequence === 0) {
+            if (state.world?.parentCheckpoint !== null) {
+              throw new Error("Genesis checkpoint must have parentCheckpoint=null");
+            }
+            process.exit(0);
+          }
+
+          const parent = execFileSync("git", ["rev-parse", "HEAD^"], {
+            encoding: "utf8",
+          }).trim();
+
+          if (state.world?.parentCheckpoint !== parent) {
+            throw new Error(
+              `parentCheckpoint mismatch: state=${state.world?.parentCheckpoint} git=${parent}`
+            );
+          }
+          NODE
