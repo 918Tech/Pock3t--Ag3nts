@@ -3,7 +3,7 @@
   "world": {
     "universeId": "pocket-agents",
     "sequence": 1,
-    "parentCheckpoint": "914d0992e0bda828171f34f807b0cd63f296e17d",
+    "parentCheckpoint": "baf06960284d06ed51d08c5c213cf09694542c93",
     "lastEvent": {
       "id": "EVT-WORLD-0000000001",
       "type": "PLAYABLE_GENESIS",
@@ -460,6 +460,6 @@
   },
   "integrity": {
     "algorithm": "SHA-256",
-    "stateRoot": "sha256:72063f14337f8c430cad2340f22573eb94e3843e9b0975588a4263d76d457545"
+    "stateRoot": "sha256:db99e5f026919a90838586e960c0f2834049b2e2bb79334e02715db3cd6e5502"
   }
 }
