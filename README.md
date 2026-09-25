@@ -52,3 +52,40 @@
 ├── flasher/
 │   └── index.html           # Web Serial browser flash tool (GitHub Pages)
 └── README.md
+
+
+---
+
+## Pocket Agents PWA v1.0.0
+
+The browser edition is now an installable Progressive Web App.
+
+**Play / install:** https://918tech.github.io/Pock3t--Ag3nts/
+
+Release baseline:
+
+- Stable branch: `release/v1.0.0`
+- Release commit: `addf8c854ecf5187839878bfdb0c09768d16ee46`
+- App manifest: `docs/manifest.webmanifest`
+- Offline service worker: `docs/sw.js`
+- Version contract: `docs/version.json`
+
+### v1 playable features
+
+- GRID RUNNER VS mode with a live AI rival
+- Moving sentry hazards
+- Keyboard / WASD controls
+- Touch swipe controls
+- On-screen D-pad
+- Win/loss/best-score persistence
+- Agent XP progression
+- Stealth encounter scanner
+- Agent roster and active-agent selection
+- Exclusive single-owner skill instances
+- In-browser marketplace transfers
+- Persistent provenance event ledger
+- Install-to-home-screen support
+- Standalone PWA display mode
+- Offline application shell after installation/cache
+
+The web release stores its player state locally in the browser. It does not place GitHub credentials or privileged world-writer credentials in the PWA.
