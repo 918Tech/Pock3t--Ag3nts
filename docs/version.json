@@ -1,0 +1,10 @@
+{
+  "name": "Pocket Agents PWA",
+  "version": "1.0.0",
+  "release": "v1",
+  "channel": "stable",
+  "released": "2026-09-24",
+  "entrypoint": "./index.html",
+  "offline": true,
+  "vsMode": true
+}
