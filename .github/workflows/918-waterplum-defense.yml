@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -24,7 +24,9 @@ jobs:
         run: python -m pip install "git+https://github.com/918Tech/FADS-GATE.git@4bdc2f9adc4035d4fa70a68f8743435cb0300d56"
 
       - name: Evaluate repository telemetry
+        shell: bash
         run: |
+          set +e
           fads-waterplum-scan \
             --root . \
             --endpoint https://nine18-fads-waterplum.onrender.com/v1/evaluate \
@@ -33,6 +35,14 @@ jobs:
             --endpoint https://nine18-fads-singapore.onrender.com/v1/evaluate \
             --fail-on restricted \
             --output waterplum-evidence.json
+          rc=$?
+          set -e
+          if [ "$rc" -eq 5 ]; then
+            echo "::warning::WaterPlum mesh unavailable; repository scan recorded as degraded external telemetry."
+            printf '%s\n' '{"status":"degraded","reason":"mesh_unavailable","source":"918-waterplum-defense"}' > waterplum-evidence.json
+            exit 0
+          fi
+          exit "$rc"
 
       - name: Preserve WaterPlum evidence
         if: always()
